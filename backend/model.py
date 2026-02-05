@@ -67,18 +67,18 @@ def load_trained_model():
             print(f"Found model file. Size: {file_size_mb:.2f} MB")
             
             if file_size_mb < 0.1:
-                print("⚠️ File is too small (< 100KB). It might be a Git LFS pointer. Falling back to dummy model.")
-                return build_model()
+                print("⚠️ File is too small (< 100KB). It might be a Git LFS pointer. Switching to Mock Mode.")
+                return None
                 
             print("Loading saved model...")
             return tf.keras.models.load_model(MODEL_PATH)
         except Exception as e:
             print(f"❌ Error loading model: {e}")
-            print("Falling back to new (untrained) model for demo purposes.")
-            return build_model()
+            print("Switching to Mock Mode.")
+            return None
     else:
-        print("⚠️ No saved model found. Creating a new (untrained) one for demo purposes.")
-        return build_model()
+        print("⚠️ No saved model found. Switching to Mock Mode.")
+        return None
 
 if __name__ == "__main__":
     train_model()

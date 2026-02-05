@@ -1,8 +1,8 @@
 fastapi
 uvicorn
 python-multipart
-tensorflow
-numpy
+tensorflow-cpu
+numpy<2.0.0
 pillow
 scikit-learn
 matplotlib

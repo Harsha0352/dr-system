@@ -33,9 +33,11 @@ function App() {
                 },
             })
             setResult(response.data)
-        } catch (err) {
+        } catch (err: any) {
             console.error(err)
-            setError("Failed to analyze image. Please try again.")
+            const errorMsg = err.response?.data?.error || err.message || "Failed to analyze image. Please try again."
+            const details = err.response?.data?.trace ? " (Server Error)" : ""
+            setError(errorMsg + details)
         } finally {
             setIsLoading(false)
         }

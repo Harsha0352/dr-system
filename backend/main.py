@@ -1,17 +1,27 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import numpy as np
 import uvicorn
-from model import load_trained_model, NUM_CLASSES
-from utils import read_image_file, preprocess_image
-import tensorflow as tf
+import numpy as np
+# Defer heavy imports to prevent startup timeout/crash
+# from model import load_trained_model, NUM_CLASSES 
+# from utils import read_image_file, preprocess_image
 
 app = FastAPI(title="Diabetic Retinopathy Detection API")
 
+# Global State
+model = None
+CLASS_NAMES = {
+    0: "No DR",
+    1: "Mild",
+    2: "Moderate",
+    3: "Severe",
+    4: "Proliferative DR"
+}
+
 # CORS setup
 origins = [
-    "http://localhost:5173",  # Vite default port
+    "http://localhost:5173",
     "http://localhost:3000",
     "*"
 ]
@@ -24,16 +34,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load Model
-model = load_trained_model()
-
-CLASS_NAMES = {
-    0: "No DR",
-    1: "Mild",
-    2: "Moderate",
-    3: "Severe",
-    4: "Proliferative DR"
-}
+@app.on_event("startup")
+async def startup_event():
+    global model
+    print("🚀 App starting... Lazy loading model.")
+    try:
+        from model import load_trained_model
+        model = load_trained_model()
+        if model:
+            print("✅ Model loaded successfully!")
+        else:
+            print("⚠️ Model failed to load (or Mock Mode active).")
+    except Exception as e:
+        print(f"❌ Critical error loading model module: {e}")
+        model = None
 
 @app.get("/")
 def read_root():
@@ -45,6 +59,9 @@ async def predict_image(file: UploadFile = File(...)):
         return {"error": "No file uploaded"}
     
     try:
+        # Lazy import utils to avoid top-level crashes
+        from utils import read_image_file, preprocess_image
+        
         # Read and preprocess
         image_data = await file.read()
         image = read_image_file(image_data)
@@ -74,4 +91,4 @@ async def predict_image(file: UploadFile = File(...)):
         return JSONResponse(status_code=500, content={"error": str(e), "trace": traceback.format_exc()})
 
 if __name__ == "__main__":
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

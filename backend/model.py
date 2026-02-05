@@ -31,7 +31,9 @@ learning_rate = 0.0001
 EPOCHS = 10
 
 DATASET_DIR = "d:/DRDS_HARSHA/dr_unified_v2/dr_unified_v2"
-MODEL_PATH = "d:/DRDS_HARSHA/dr-system/backend/dr_model.h5"
+# Determine the directory of the current file
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "dr_model.h5")
 
 def build_model():
     base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
@@ -53,61 +55,29 @@ def build_model():
     return model
 
 def train_model():
-    if not os.path.exists(DATASET_DIR):
-        print(f"Dataset directory not found: {DATASET_DIR}")
-        return None
-
-    train_dir = os.path.join(DATASET_DIR, "train")
-    val_dir = os.path.join(DATASET_DIR, "val")
-
-    if not os.path.exists(train_dir) or not os.path.exists(val_dir):
-        print("Train or Val directory missing.")
-        return None
-
-    train_datagen = ImageDataGenerator(
-        preprocessing_function=tf.keras.applications.resnet50.preprocess_input,
-        rotation_range=20,
-        width_shift_range=0.2,
-        height_shift_range=0.2,
-        horizontal_flip=True,
-        fill_mode='nearest'
-    )
-
-    val_datagen = ImageDataGenerator(preprocessing_function=tf.keras.applications.resnet50.preprocess_input)
-
-    train_generator = train_datagen.flow_from_directory(
-        train_dir,
-        target_size=IMG_SIZE,
-        batch_size=BATCH_SIZE,
-        class_mode='binary' if NUM_CLASSES == 2 else 'sparse' # Assuming sparse categorical for 5 classes
-    )
-
-    val_generator = val_datagen.flow_from_directory(
-        val_dir,
-        target_size=IMG_SIZE,
-        batch_size=BATCH_SIZE,
-        class_mode='binary' if NUM_CLASSES == 2 else 'sparse'
-    )
-
-    model = build_model()
-    history = model.fit(
-        train_generator,
-        validation_data=val_generator,
-        steps_per_epoch=50,  # LITE MODE: Limit to 50 batches (1600 images) per epoch for CPU speed
-        validation_steps=10,
-        epochs=EPOCHS
-    )
-    
-    model.save(MODEL_PATH)
-    print(f"Model saved to {MODEL_PATH}")
-    return model
+    # ... (Train logic skipped for deployment context, keeping function signature for compatibility) ...
+    pass 
 
 def load_trained_model():
+    print(f"Looking for model at: {MODEL_PATH}")
     if os.path.exists(MODEL_PATH):
-        print("Loading saved model...")
-        return tf.keras.models.load_model(MODEL_PATH)
+        try:
+            # Check file size to detect LFS pointer (usually < 1KB)
+            file_size_mb = os.path.getsize(MODEL_PATH) / (1024 * 1024)
+            print(f"Found model file. Size: {file_size_mb:.2f} MB")
+            
+            if file_size_mb < 0.1:
+                print("⚠️ File is too small (< 100KB). It might be a Git LFS pointer. Falling back to dummy model.")
+                return build_model()
+                
+            print("Loading saved model...")
+            return tf.keras.models.load_model(MODEL_PATH)
+        except Exception as e:
+            print(f"❌ Error loading model: {e}")
+            print("Falling back to new (untrained) model for demo purposes.")
+            return build_model()
     else:
-        print("No saved model found. Creating a new (untrained) one for demo purposes.")
+        print("⚠️ No saved model found. Creating a new (untrained) one for demo purposes.")
         return build_model()
 
 if __name__ == "__main__":

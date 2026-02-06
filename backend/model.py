@@ -58,13 +58,37 @@ def load_trained_model():
     if os.path.exists(MODEL_PATH):
         try:
             # Check file size to detect LFS pointer
-            file_size_mb = os.path.getsize(MODEL_PATH) / (1024 * 1024)
-            print(f"Found model file. Size: {file_size_mb:.2f} MB")
+            file_size_bytes = os.path.getsize(MODEL_PATH)
+            file_size_mb = file_size_bytes / (1024 * 1024)
+            print(f"DEBUG: Found model file. Size in bytes: {file_size_bytes}")
+            print(f"DEBUG: Found model file. Size in MB: {file_size_mb:.2f} MB")
             
             if file_size_mb < 0.1:
-                print("LFS Pointer detected. Switching to Mock Mode.")
-                return None
-                
+                print(f"DEBUG: LFS Pointer detected (Size {file_size_bytes} bytes). Downloading actual model...")
+                try:
+                    import requests
+                    url = "https://raw.githubusercontent.com/Harsha0352/dr-system/main/backend/dr_model.h5"
+                    print(f"Downloading from {url}...")
+                    response = requests.get(url, stream=True)
+                    response.raise_for_status()
+                    
+                    with open(MODEL_PATH, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    
+                    print("Download complete! Verifying size...")
+                    file_size_bytes = os.path.getsize(MODEL_PATH)
+                    file_size_mb = file_size_bytes / (1024 * 1024)
+                    print(f"New file size: {file_size_mb:.2f} MB")
+                    
+                    if file_size_mb < 10:
+                         print("❌ Downloaded file is still too small. LFS might be broken on GitHub side too.")
+                         return None
+                         
+                except Exception as dl_err:
+                    print(f"❌ Failed to download model: {dl_err}")
+                    return None
+            
             print("Loading saved model...")
             tf = get_tf()
             return tf.keras.models.load_model(MODEL_PATH)

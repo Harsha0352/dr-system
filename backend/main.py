@@ -37,16 +37,16 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     global model
-    print("🚀 App starting... Lazy loading model.")
+    print("App starting... Lazy loading model.")
     try:
         from model import load_trained_model
         model = load_trained_model()
         if model:
-            print("✅ Model loaded successfully!")
+            print("Model loaded successfully!")
         else:
-            print("⚠️ Model failed to load (or Mock Mode active).")
+            print("Model failed to load (or Mock Mode active).")
     except Exception as e:
-        print(f"❌ Critical error loading model module: {e}")
+        print(f"Critical error loading model module: {e}")
         model = None
 
 @app.get("/")
@@ -65,21 +65,32 @@ async def predict_image(file: UploadFile = File(...)):
         processed_image = preprocess_image(image)
         
         # Predict
+        if model is None:
+            print("Model is None - cannot predict")
+            return {
+                "filename": file.filename,
+                "prediction_class": -1,
+                "prediction_label": "Model Not Loaded",
+                "confidence": 0.0,
+                "error": "Model not loaded"
+            }
+        
+        # Predict
         try:
-            if model is None:
-                raise Exception("Model is None, forcing mock")
-            
+            # Ensure input shape matches model expectation (None, 224, 224, 3)
+            print(f"Predicting shape: {processed_image.shape}")
             predictions = model.predict(processed_image)
+            print(f"Raw Predictions: {predictions}")
+            
             predicted_class = np.argmax(predictions[0])
             confidence = float(np.max(predictions[0]))
             
-        except Exception as pred_err:
-            print(f"⚠️ Prediction Failed (Using Mock Fallback): {pred_err}")
-            # Fallback to Mock
-            import random
-            predicted_class = random.randint(0, 4)
-            confidence = 0.85 + (random.random() * 0.14)
-        
+        except Exception as e:
+            print(f"Prediction computation failed: {e}")
+            import traceback
+            traceback.print_exc()
+            raise e
+
         return {
             "filename": file.filename,
             "prediction_class": int(predicted_class),
@@ -87,22 +98,13 @@ async def predict_image(file: UploadFile = File(...)):
             "confidence": confidence
         }
     except Exception as e:
-        # ULTIMATE FAILSAFE: If anything fails (file reading, preprocessing, logic), return Mock Data
-        print(f"❌ CRITICAL ERROR in /predict: {e}")
-        import traceback
-        traceback.print_exc()
-        
-        # Mock Response
-        import random
-        confidence = 0.75 + (random.random() * 0.15)
-        predicted_class = random.randint(0, 4)
-        
+        print(f"PROCESSSING ERROR: {e}")
         return {
-            "filename": file.filename if file else "unknown",
-            "prediction_class": predicted_class,
-            "prediction_label": CLASS_NAMES.get(predicted_class, "Mock Result"),
-            "confidence": confidence,
-            "warning": "Generated via Mock Mode"
+            "filename": file.filename if file else "error",
+            "prediction_class": -1,
+            "prediction_label": "Error",
+            "confidence": 0.0,
+            "error": str(e)
         }
 
 if __name__ == "__main__":

@@ -62,17 +62,17 @@ def load_trained_model():
             print(f"Found model file. Size: {file_size_mb:.2f} MB")
             
             if file_size_mb < 0.1:
-                print("⚠️ LFS Pointer detected. Switching to Mock Mode.")
+                print("LFS Pointer detected. Switching to Mock Mode.")
                 return None
                 
             print("Loading saved model...")
             tf = get_tf()
             return tf.keras.models.load_model(MODEL_PATH)
         except Exception as e:
-            print(f"❌ Error loading model: {e}")
+            print(f"Error loading model: {e}")
             return None
     else:
-        print("⚠️ No saved model found. Switching to Mock Mode.")
+        print("No saved model found. Switching to Mock Mode.")
         return None
 
 if __name__ == "__main__":
